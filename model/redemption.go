@@ -142,6 +142,7 @@ func Redeem(key string, userId int) (quota int, err error) {
 		return 0, errors.New("无效的 user id")
 	}
 	redemption := &Redemption{}
+	var affRebate AffRechargeRebate
 
 	keyCol := "`key`"
 	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
@@ -172,16 +173,29 @@ func Redeem(key string, userId int) (quota int, err error) {
 		if result.Error != nil {
 			return result.Error
 		}
+<<<<<<< HEAD
 		if result.RowsAffected == 0 {
 			return errors.New("该兑换码已被使用")
 		}
 		return tx.Model(&User{}).Where("id = ?", userId).Update("quota", gorm.Expr("quota + ?", redemption.Quota)).Error
+=======
+		affRebate, err = GrantAffRechargeRebateWithTx(tx, userId, redemption.Quota)
+		if err != nil {
+			return err
+		}
+		redemption.RedeemedTime = common.GetTimestamp()
+		redemption.Status = common.RedemptionCodeStatusUsed
+		redemption.UsedUserId = userId
+		err = tx.Save(redemption).Error
+		return err
+>>>>>>> 84d9c97f (feat: add 5 percent aff recharge rebate)
 	})
 	if err != nil {
 		common.SysError("redemption failed: " + err.Error())
 		return 0, ErrRedeemFailed
 	}
 	RecordLog(userId, LogTypeTopup, fmt.Sprintf("通过兑换码充值 %s，兑换码ID %d", logger.LogQuota(redemption.Quota), redemption.Id))
+	RecordAffRechargeRebateLog(affRebate, "兑换码")
 	return redemption.Quota, nil
 }
 
