@@ -120,6 +120,7 @@ func Redeem(key string, userId int) (quota int, err error) {
 		return 0, errors.New("无效的 user id")
 	}
 	redemption := &Redemption{}
+	var affRebate AffRechargeRebate
 
 	keyCol := "`key`"
 	if common.UsingPostgreSQL {
@@ -141,6 +142,10 @@ func Redeem(key string, userId int) (quota int, err error) {
 		if err != nil {
 			return err
 		}
+		affRebate, err = GrantAffRechargeRebateWithTx(tx, userId, redemption.Quota)
+		if err != nil {
+			return err
+		}
 		redemption.RedeemedTime = common.GetTimestamp()
 		redemption.Status = common.RedemptionCodeStatusUsed
 		redemption.UsedUserId = userId
@@ -152,6 +157,7 @@ func Redeem(key string, userId int) (quota int, err error) {
 		return 0, ErrRedeemFailed
 	}
 	RecordLog(userId, LogTypeTopup, fmt.Sprintf("通过兑换码充值 %s，兑换码ID %d", logger.LogQuota(redemption.Quota), redemption.Id))
+	RecordAffRechargeRebateLog(affRebate, "兑换码")
 	return redemption.Quota, nil
 }
 
