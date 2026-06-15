@@ -48,9 +48,14 @@ const InvitationCard = ({
           <Gift size={16} />
         </Avatar>
         <div>
-          <Typography.Text className='text-lg font-medium'>
-            {t('邀请奖励')}
-          </Typography.Text>
+          <div className='flex items-center gap-2'>
+            <Typography.Text className='text-lg font-medium'>
+              {t('邀请奖励')}
+            </Typography.Text>
+            <span className='inline-flex items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold leading-none text-emerald-700 dark:text-emerald-300'>
+              AFF 5%
+            </span>
+          </div>
           <div className='text-xs'>{t('邀请好友获得额外奖励')}</div>
         </div>
       </div>

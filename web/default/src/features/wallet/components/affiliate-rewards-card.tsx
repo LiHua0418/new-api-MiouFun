@@ -20,6 +20,7 @@ import { Share2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatQuota } from '@/lib/format'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -67,9 +68,17 @@ export function AffiliateRewardsCard({
             <Share2 className='text-muted-foreground size-4' />
           </div>
           <div className='min-w-0'>
-            <h3 className='truncate text-sm font-semibold'>
-              {t('Referral Program')}
-            </h3>
+            <div className='flex min-w-0 items-center gap-2'>
+              <h3 className='truncate text-sm font-semibold'>
+                {t('Referral Program')}
+              </h3>
+              <Badge
+                variant='outline'
+                className='border-emerald-500/40 bg-emerald-500/10 px-1.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300'
+              >
+                AFF 5%
+              </Badge>
+            </div>
             <p className='text-muted-foreground line-clamp-1 text-xs'>
               {t(
                 'Earn rewards when your referrals add funds. Transfer accumulated rewards to your balance anytime.'
