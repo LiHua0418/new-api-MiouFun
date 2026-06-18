@@ -52,6 +52,7 @@ import { getCurrencyConfig } from '../../helpers/render';
 import SubscriptionPlansCard from './SubscriptionPlansCard';
 
 const { Text } = Typography;
+const DEFAULT_REDEMPTION_SHOP_URL = 'https://pay.ldxp.cn/shop/P7QYCHZP';
 
 const RechargeCard = ({
   t,
@@ -108,6 +109,7 @@ const RechargeCard = ({
   const shouldShowSubscription =
     !subscriptionLoading && subscriptionPlans.length > 0;
   const regularPayMethods = payMethods || [];
+  const redemptionShopUrl = topUpLink || DEFAULT_REDEMPTION_SHOP_URL;
 
   useEffect(() => {
     if (initialTabSetRef.current) return;
@@ -613,14 +615,14 @@ const RechargeCard = ({
               showClear
               style={{ width: '100%' }}
               extraText={
-                topUpLink && (
+                redemptionShopUrl && (
                   <Text type='tertiary'>
                     {t('在找兑换码？')}
                     <Text
                       type='secondary'
                       underline
                       className='cursor-pointer'
-                      onClick={openTopUpLink}
+                      onClick={() => window.open(redemptionShopUrl, '_blank')}
                     >
                       {t('购买兑换码')}
                     </Text>
@@ -629,6 +631,31 @@ const RechargeCard = ({
               }
             />
           </Form>
+          {redemptionShopUrl && (
+            <div className='mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900'>
+              <div className='flex flex-col gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-700 sm:flex-row sm:items-center sm:justify-between'>
+                <div className='flex items-center gap-2'>
+                  <IconGift />
+                  <Text strong>{t('购买兑换码')}</Text>
+                </div>
+                <Button
+                  theme='solid'
+                  type='primary'
+                  size='small'
+                  onClick={() => window.open(redemptionShopUrl, '_blank')}
+                >
+                  {t('新窗口打开')}
+                </Button>
+              </div>
+              <iframe
+                src={redemptionShopUrl}
+                title={t('购买兑换码')}
+                className='block h-[760px] w-full border-0 max-sm:h-[680px]'
+                loading='lazy'
+                referrerPolicy='no-referrer-when-downgrade'
+              />
+            </div>
+          )}
         </Card>
       ) : (
         <Banner

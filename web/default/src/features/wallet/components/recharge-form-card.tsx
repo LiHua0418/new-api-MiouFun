@@ -50,6 +50,8 @@ import type {
 } from '../types'
 import { CreemProductsSection } from './creem-products-section'
 
+const DEFAULT_REDEMPTION_SHOP_URL = 'https://pay.ldxp.cn/shop/P7QYCHZP'
+
 interface RechargeFormCardProps {
   topupInfo: TopupInfo | null
   presetAmounts: PresetAmount[]
@@ -136,6 +138,7 @@ export function RechargeFormCard({
     Array.isArray(waffoPayMethods) && waffoPayMethods.length > 0
   const minTopup = getMinTopupAmount(topupInfo)
   const redemptionEnabled = topupInfo?.enable_redemption !== false
+  const redemptionShopUrl = topupLink || DEFAULT_REDEMPTION_SHOP_URL
 
   if (loading) {
     return (
@@ -475,11 +478,11 @@ export function RechargeFormCard({
               {t('Redeem')}
             </Button>
           </div>
-          {topupLink && (
+          {redemptionShopUrl && (
             <p className='text-muted-foreground text-xs'>
               {t('Need a redemption code?')}{' '}
               <a
-                href={topupLink}
+                href={redemptionShopUrl}
                 target='_blank'
                 rel='noopener noreferrer'
                 className='inline-flex items-center gap-1 underline-offset-4 hover:underline'
@@ -488,6 +491,40 @@ export function RechargeFormCard({
                 <ExternalLink className='h-3 w-3' />
               </a>
             </p>
+          )}
+          {redemptionShopUrl && (
+            <div className='overflow-hidden rounded-lg border bg-background'>
+              <div className='flex flex-col gap-3 border-b p-3 sm:flex-row sm:items-center sm:justify-between'>
+                <div className='flex items-center gap-2'>
+                  <Gift className='text-muted-foreground h-4 w-4' />
+                  <span className='text-sm font-medium'>
+                    {t('Get one here')}
+                  </span>
+                </div>
+                <Button
+                  asChild
+                  variant='outline'
+                  size='sm'
+                  className='w-full gap-2 sm:w-auto'
+                >
+                  <a
+                    href={redemptionShopUrl}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                  >
+                    {t('Open in new window')}
+                    <ExternalLink className='h-4 w-4' />
+                  </a>
+                </Button>
+              </div>
+              <iframe
+                src={redemptionShopUrl}
+                title={t('Get one here')}
+                className='block h-[680px] w-full border-0 sm:h-[760px]'
+                loading='lazy'
+                referrerPolicy='no-referrer-when-downgrade'
+              />
+            </div>
           )}
         </div>
       ) : (
