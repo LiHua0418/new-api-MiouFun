@@ -36,6 +36,7 @@ import { StatusContext } from '../../context/Status';
 
 import RechargeCard from './RechargeCard';
 import InvitationCard from './InvitationCard';
+import RedemptionShopCard from './RedemptionShopCard';
 import TransferModal from './modals/TransferModal';
 import PaymentConfirmModal from './modals/PaymentConfirmModal';
 import TopupHistoryModal from './modals/TopupHistoryModal';
@@ -56,6 +57,8 @@ function isSafeHttpCheckoutUrl(value) {
     return false;
   }
 }
+
+const DEFAULT_REDEMPTION_SHOP_URL = 'https://pay.ldxp.cn/shop/P7QYCHZP';
 
 const TopUp = () => {
   const { t } = useTranslation();
@@ -122,6 +125,7 @@ const TopUp = () => {
   // 预设充值额度选项
   const [presetAmounts, setPresetAmounts] = useState([]);
   const [selectedPreset, setSelectedPreset] = useState(null);
+  const redemptionShopUrl = topUpLink || DEFAULT_REDEMPTION_SHOP_URL;
 
   // 充值配置信息
   const [topupInfo, setTopupInfo] = useState({
@@ -198,14 +202,6 @@ const TopUp = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const openTopUpLink = () => {
-    if (!topUpLink) {
-      showError(t('超级管理员未设置充值链接！'));
-      return;
-    }
-    window.open(topUpLink, '_blank');
   };
 
   const preTopUp = async (payment) => {
@@ -1002,7 +998,6 @@ const TopUp = () => {
           topUp={topUp}
           isSubmitting={isSubmitting}
           topUpLink={topUpLink}
-          openTopUpLink={openTopUpLink}
           userState={userState}
           renderQuota={renderQuota}
           statusLoading={statusLoading}
@@ -1026,6 +1021,9 @@ const TopUp = () => {
           handleAffLinkClick={handleAffLinkClick}
           complianceConfirmed={topupInfo.payment_compliance_confirmed !== false}
         />
+      </div>
+      <div className='mt-6'>
+        <RedemptionShopCard t={t} shopUrl={redemptionShopUrl} />
       </div>
     </div>
   );
