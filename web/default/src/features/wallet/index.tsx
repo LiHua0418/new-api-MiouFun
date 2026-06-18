@@ -30,6 +30,7 @@ import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
 import { PaymentConfirmDialog } from './components/dialogs/payment-confirm-dialog'
 import { TransferDialog } from './components/dialogs/transfer-dialog'
 import { RechargeFormCard } from './components/recharge-form-card'
+import { RedemptionShopCard } from './components/redemption-shop-card'
 import { SubscriptionPlansCard } from './components/subscription-plans-card'
 import { WalletStatsCard } from './components/wallet-stats-card'
 import { DEFAULT_DISCOUNT_RATE } from './constants'
@@ -58,6 +59,8 @@ interface WalletProps {
   initialShowHistory?: boolean
 }
 
+const DEFAULT_REDEMPTION_SHOP_URL = 'https://pay.ldxp.cn/shop/P7QYCHZP'
+
 export function Wallet(props: WalletProps) {
   const { t } = useTranslation()
   const [user, setUser] = useState<UserWalletData | null>(null)
@@ -79,6 +82,8 @@ export function Wallet(props: WalletProps) {
   const { status } = useStatus()
   const { currency } = useSystemConfig()
   const { topupInfo, presetAmounts, loading: topupLoading } = useTopupInfo()
+  const redemptionShopUrl =
+    topupInfo?.topup_link || DEFAULT_REDEMPTION_SHOP_URL
 
   // Calculate effective exchange rate - when display type is USD, use rate of 1
   const effectiveUsdExchangeRate = useMemo(() => {
@@ -315,6 +320,8 @@ export function Wallet(props: WalletProps) {
                 onPurchaseSuccess={fetchUser}
               />
             </div>
+
+            <RedemptionShopCard shopUrl={redemptionShopUrl} />
 
             <AffiliateRewardsCard
               user={user}
