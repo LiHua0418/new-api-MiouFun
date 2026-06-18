@@ -37,10 +37,19 @@ export function RedemptionShopCard({ shopUrl }: RedemptionShopCardProps) {
       title={t('Get one here')}
       icon={<Gift className='h-4 w-4' />}
       action={
-        <Button asChild size='sm' className='w-full gap-2 sm:w-auto'>
-          <a href={shopUrl} target='_blank' rel='noopener noreferrer'>
+        <Button
+          asChild
+          size='sm'
+          className='w-full gap-2 whitespace-nowrap sm:w-auto'
+        >
+          <a
+            href={shopUrl}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='inline-flex items-center gap-2 whitespace-nowrap'
+          >
             {t('Open in new window')}
-            <ExternalLink className='h-4 w-4' />
+            <ExternalLink className='h-4 w-4 shrink-0' />
           </a>
         </Button>
       }
