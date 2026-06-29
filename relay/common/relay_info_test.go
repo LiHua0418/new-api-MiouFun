@@ -3,6 +3,7 @@ package common
 import (
 	"testing"
 
+	rootcommon "github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/types"
 	"github.com/stretchr/testify/require"
 )
@@ -37,4 +38,16 @@ func TestRelayInfoGetFinalRequestRelayFormatFallsBackToRelayFormat(t *testing.T)
 func TestRelayInfoGetFinalRequestRelayFormatNilReceiver(t *testing.T) {
 	var info *RelayInfo
 	require.Equal(t, types.RelayFormat(""), info.GetFinalRequestRelayFormat())
+}
+
+func TestTaskSubmitReqHasImageURL(t *testing.T) {
+	body := []byte(`{"model":"grok-imagine-video-1.5-preview","prompt":"make it move","image_url":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD+abc/def=="}`)
+
+	var req TaskSubmitReq
+	if err := rootcommon.Unmarshal(body, &req); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	if !req.HasImage() {
+		t.Fatal("HasImage() = false, want true for image_url")
+	}
 }

@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -28,6 +30,22 @@ func videoProxyError(c *gin.Context, status int, errType, message string) {
 			"type":    errType,
 		},
 	})
+}
+
+func VideoInputImage(c *gin.Context) {
+	fileName := filepath.Base(c.Param("file"))
+	if fileName == "." || fileName == "/" || !strings.HasSuffix(strings.ToLower(fileName), ".jpg") {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	path := filepath.Join("/data/video-inputs", fileName)
+	if _, err := os.Stat(path); err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	c.Header("Content-Type", "image/jpeg")
+	c.Header("Cache-Control", "public, max-age=86400")
+	c.File(path)
 }
 
 func VideoProxy(c *gin.Context) {
@@ -77,7 +95,11 @@ func VideoProxy(c *gin.Context) {
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
+	method := http.MethodGet
+	if c.Request.Method == http.MethodHead {
+		method = http.MethodHead
+	}
+	req, err := http.NewRequestWithContext(ctx, method, "", nil)
 	if err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("Failed to create request: %s", err.Error()))
 		videoProxyError(c, http.StatusInternalServerError, "server_error", "Failed to create proxy request")
@@ -107,7 +129,10 @@ func VideoProxy(c *gin.Context) {
 			return
 		}
 	case constant.ChannelTypeOpenAI, constant.ChannelTypeSora:
-		videoURL = fmt.Sprintf("%s/v1/videos/%s/content", baseURL, task.GetUpstreamTaskID())
+		videoURL = getStoredVideoURL(task)
+		if videoURL == "" {
+			videoURL = fmt.Sprintf("%s/v1/videos/%s/content", baseURL, task.GetUpstreamTaskID())
+		}
 		req.Header.Set("Authorization", "Bearer "+channel.Key)
 	default:
 		// Video URL is stored in PrivateData.ResultURL (fallback to FailReason for old data)
@@ -166,9 +191,39 @@ func VideoProxy(c *gin.Context) {
 
 	c.Writer.Header().Set("Cache-Control", "public, max-age=86400")
 	c.Writer.WriteHeader(resp.StatusCode)
+	if c.Request.Method == http.MethodHead {
+		return
+	}
 	if _, err = io.Copy(c.Writer, resp.Body); err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("Failed to stream video content: %s", err.Error()))
 	}
+}
+
+func getStoredVideoURL(task *model.Task) string {
+	if task == nil {
+		return ""
+	}
+	candidates := []string{task.GetResultURL()}
+	if len(task.Data) > 0 {
+		var payload map[string]any
+		if err := common.Unmarshal(task.Data, &payload); err == nil {
+			for _, key := range []string{"video_url", "url", "result_url"} {
+				if value, ok := payload[key].(string); ok {
+					candidates = append(candidates, value)
+				}
+			}
+		}
+	}
+	for _, candidate := range candidates {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "" || isTaskProxyContentURL(candidate, task.TaskID) {
+			continue
+		}
+		if strings.HasPrefix(candidate, "http://") || strings.HasPrefix(candidate, "https://") || strings.HasPrefix(candidate, "data:") {
+			return candidate
+		}
+	}
+	return ""
 }
 
 func writeVideoDataURL(c *gin.Context, dataURL string) error {
