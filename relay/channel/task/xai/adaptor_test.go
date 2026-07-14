@@ -153,6 +153,7 @@ func TestParseTaskResultStatuses(t *testing.T) {
 		{name: "running", body: `{"status":"running"}`, status: model.TaskStatusInProgress},
 		{name: "completed", body: `{"status":"completed","url":"https://example.com/video.mp4"}`, status: model.TaskStatusSuccess},
 		{name: "succeeded", body: `{"data":{"status":"succeeded","videos":[{"url":"https://example.com/video.mp4"}]}}`, status: model.TaskStatusSuccess},
+		{name: "sub2api done", body: `{"status":"done","video":{"url":"https://vidgen.x.ai/video.mp4","duration":10},"progress":100}`, status: model.TaskStatusSuccess},
 		{name: "failed", body: `{"status":"failed","error":{"message":"bad request"}}`, status: model.TaskStatusFailure},
 		{name: "canceled", body: `{"status":"canceled","message":"stopped"}`, status: model.TaskStatusFailure},
 	}
@@ -173,6 +174,29 @@ func TestParseTaskResultStatuses(t *testing.T) {
 				t.Fatalf("Reason is empty for failure body %s", tt.body)
 			}
 		})
+	}
+}
+
+func TestConvertToOpenAIVideoReadsSub2APIVideoDuration(t *testing.T) {
+	task := &model.Task{
+		TaskID: "task_public",
+		Status: model.TaskStatusSuccess,
+		Data:   json.RawMessage(`{"status":"done","video":{"url":"https://vidgen.x.ai/video.mp4","duration":10}}`),
+		PrivateData: model.TaskPrivateData{
+			ResultURL: "https://vidgen.x.ai/video.mp4",
+		},
+	}
+
+	body, err := (&TaskAdaptor{}).ConvertToOpenAIVideo(task)
+	if err != nil {
+		t.Fatalf("ConvertToOpenAIVideo() error = %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatalf("json.Unmarshal(%s) error = %v", body, err)
+	}
+	if got["seconds"] != "10" {
+		t.Fatalf("seconds = %#v, want %q", got["seconds"], "10")
 	}
 }
 

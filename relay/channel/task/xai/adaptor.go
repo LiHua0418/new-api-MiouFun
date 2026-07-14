@@ -226,7 +226,12 @@ func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, e
 			"data.request_id", "data.id", "data.task_id",
 			"video.request_id", "video.id",
 		),
-		Url: extractFirstString(respBody, "url", "video_url", "output", "data.url", "data.video_url", "data.output", "videos.0.url", "data.videos.0.url"),
+		Url: extractFirstString(respBody,
+			"url", "video_url", "video.url",
+			"data.url", "data.video_url", "data.video.url",
+			"videos.0.url", "data.videos.0.url",
+			"output", "data.output",
+		),
 	}
 
 	if progress := gjson.GetBytes(respBody, "progress"); progress.Exists() {
@@ -242,7 +247,7 @@ func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, e
 		taskResult.Status = model.TaskStatusQueued
 	case "processing", "in_progress", "running":
 		taskResult.Status = model.TaskStatusInProgress
-	case "completed", "succeeded", "success":
+	case "completed", "succeeded", "success", "done":
 		taskResult.Status = model.TaskStatusSuccess
 		if taskResult.Progress == "" {
 			taskResult.Progress = taskcommon.ProgressComplete
@@ -275,7 +280,7 @@ func (a *TaskAdaptor) ConvertToOpenAIVideo(task *model.Task) ([]byte, error) {
 	if url := task.GetResultURL(); url != "" {
 		openAIVideo.SetMetadata("url", url)
 	}
-	if seconds := extractFirstString(task.Data, "seconds", "data.seconds", "duration", "data.duration"); seconds != "" {
+	if seconds := extractFirstString(task.Data, "seconds", "data.seconds", "duration", "data.duration", "video.duration", "data.video.duration"); seconds != "" {
 		openAIVideo.Seconds = seconds
 	}
 	if size := extractFirstString(task.Data, "size", "data.size"); size != "" {
