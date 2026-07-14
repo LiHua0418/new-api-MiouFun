@@ -153,13 +153,21 @@ func (a *TaskAdaptor) DoResponse(c *gin.Context, resp *http.Response, info *rela
 	}
 	_ = resp.Body.Close()
 
-	upstreamID := extractFirstString(responseBody, "id", "task_id", "data.id", "data.task_id")
+	upstreamID := extractFirstString(responseBody,
+		"request_id", "id", "task_id",
+		"data.request_id", "data.id", "data.task_id",
+		"video.request_id", "video.id",
+	)
 	if upstreamID == "" {
 		return "", responseBody, service.TaskErrorWrapper(fmt.Errorf("upstream task id is empty"), "invalid_response", http.StatusInternalServerError)
 	}
 
 	publicBody := responseBody
-	for _, path := range []string{"id", "task_id", "data.id", "data.task_id"} {
+	for _, path := range []string{
+		"request_id", "id", "task_id",
+		"data.request_id", "data.id", "data.task_id",
+		"video.request_id", "video.id",
+	} {
 		if gjson.GetBytes(publicBody, path).Exists() {
 			if newBody, err := sjson.SetBytes(publicBody, path, info.PublicTaskID); err == nil {
 				publicBody = newBody
@@ -212,9 +220,13 @@ func (a *TaskAdaptor) GetChannelName() string {
 func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, error) {
 	status := strings.ToLower(strings.TrimSpace(extractFirstString(respBody, "status", "data.status", "task_status", "data.task_status")))
 	taskResult := relaycommon.TaskInfo{
-		Code:   0,
-		TaskID: extractFirstString(respBody, "id", "task_id", "data.id", "data.task_id"),
-		Url:    extractFirstString(respBody, "url", "video_url", "output", "data.url", "data.video_url", "data.output", "videos.0.url", "data.videos.0.url"),
+		Code: 0,
+		TaskID: extractFirstString(respBody,
+			"request_id", "id", "task_id",
+			"data.request_id", "data.id", "data.task_id",
+			"video.request_id", "video.id",
+		),
+		Url: extractFirstString(respBody, "url", "video_url", "output", "data.url", "data.video_url", "data.output", "videos.0.url", "data.videos.0.url"),
 	}
 
 	if progress := gjson.GetBytes(respBody, "progress"); progress.Exists() {

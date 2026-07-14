@@ -88,6 +88,35 @@ func TestDoResponseExtractsTopLevelID(t *testing.T) {
 	}
 }
 
+func TestDoResponseExtractsSub2APIRequestID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	resp := &http.Response{
+		Body: io.NopCloser(strings.NewReader(`{"request_id":"video-request-123","usage":{"prompt_tokens":3,"completion_tokens":4}}`)),
+	}
+
+	upstreamID, raw, taskErr := (&TaskAdaptor{}).DoResponse(c, resp, &relaycommon.RelayInfo{
+		TaskRelayInfo: &relaycommon.TaskRelayInfo{PublicTaskID: "task_public"},
+	})
+	if taskErr != nil {
+		t.Fatalf("DoResponse() taskErr = %v", taskErr)
+	}
+	if upstreamID != "video-request-123" {
+		t.Fatalf("upstreamID = %q, want video-request-123", upstreamID)
+	}
+	if !strings.Contains(string(raw), `"request_id":"video-request-123"`) {
+		t.Fatalf("raw = %s, want original upstream request_id", raw)
+	}
+	if !strings.Contains(w.Body.String(), `"request_id":"task_public"`) {
+		t.Fatalf("response body = %s, want public request_id", w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), `"id":"task_public"`) {
+		t.Fatalf("response body = %s, want public id", w.Body.String())
+	}
+}
+
 func TestDoResponseExtractsNestedTaskID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
