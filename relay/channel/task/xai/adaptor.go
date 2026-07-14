@@ -277,8 +277,9 @@ func (a *TaskAdaptor) ConvertToOpenAIVideo(task *model.Task) ([]byte, error) {
 	openAIVideo.CreatedAt = task.CreatedAt
 	openAIVideo.CompletedAt = task.UpdatedAt
 	openAIVideo.Model = task.Properties.OriginModelName
-	if url := task.GetResultURL(); url != "" {
-		openAIVideo.SetMetadata("url", url)
+	resultURL := task.GetResultURL()
+	if resultURL != "" {
+		openAIVideo.SetMetadata("url", resultURL)
 	}
 	if seconds := extractFirstString(task.Data, "seconds", "data.seconds", "duration", "data.duration", "video.duration", "data.video.duration"); seconds != "" {
 		openAIVideo.Seconds = seconds
@@ -291,7 +292,19 @@ func (a *TaskAdaptor) ConvertToOpenAIVideo(task *model.Task) ([]byte, error) {
 			Message: task.FailReason,
 		}
 	}
-	return common.Marshal(openAIVideo)
+	responseBody, err := common.Marshal(openAIVideo)
+	if err != nil {
+		return nil, err
+	}
+	if resultURL != "" {
+		for _, path := range []string{"url", "video_url", "video.url"} {
+			responseBody, err = sjson.SetBytes(responseBody, path, resultURL)
+			if err != nil {
+				return nil, errors.Wrapf(err, "set %s failed", path)
+			}
+		}
+	}
+	return responseBody, nil
 }
 
 func extractFirstString(body []byte, paths ...string) string {

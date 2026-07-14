@@ -198,6 +198,19 @@ func TestConvertToOpenAIVideoReadsSub2APIVideoDuration(t *testing.T) {
 	if got["seconds"] != "10" {
 		t.Fatalf("seconds = %#v, want %q", got["seconds"], "10")
 	}
+	for _, key := range []string{"url", "video_url"} {
+		if got[key] != "https://vidgen.x.ai/video.mp4" {
+			t.Fatalf("%s = %#v, want result URL", key, got[key])
+		}
+	}
+	video, ok := got["video"].(map[string]any)
+	if !ok || video["url"] != "https://vidgen.x.ai/video.mp4" {
+		t.Fatalf("video = %#v, want nested result URL", got["video"])
+	}
+	metadata, ok := got["metadata"].(map[string]any)
+	if !ok || metadata["url"] != "https://vidgen.x.ai/video.mp4" {
+		t.Fatalf("metadata = %#v, want result URL", got["metadata"])
+	}
 }
 
 func newJSONContext(t *testing.T, path string, body string) *gin.Context {
