@@ -30,8 +30,16 @@ import {
   parseQuotaFromDollars,
   quotaUnitsToDollars,
 } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 import { setUserUsedQuota } from '../api'
+import type { QuotaAdjustMode } from '../types'
+
+const MODE_LABELS: Record<QuotaAdjustMode, string> = {
+  add: 'Add',
+  subtract: 'Subtract',
+  override: 'Override',
+}
 
 interface UserUsedQuotaDialogProps {
   open: boolean
@@ -43,6 +51,7 @@ interface UserUsedQuotaDialogProps {
 
 export function UserUsedQuotaDialog(props: UserUsedQuotaDialogProps) {
   const { t } = useTranslation()
+  const [mode, setMode] = useState<QuotaAdjustMode>('add')
   const [amount, setAmount] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -52,7 +61,8 @@ export function UserUsedQuotaDialog(props: UserUsedQuotaDialogProps) {
 
   useEffect(() => {
     if (props.open) {
-      setAmount(String(quotaUnitsToDollars(props.currentUsedQuota)))
+      setMode('add')
+      setAmount('')
     }
   }, [props.open, props.currentUsedQuota])
 
@@ -62,7 +72,21 @@ export function UserUsedQuotaDialog(props: UserUsedQuotaDialogProps) {
     amount.trim() !== '' &&
     Number.isFinite(parsedAmount) &&
     parsedAmount >= 0 &&
-    Number.isSafeInteger(usedQuota)
+    Number.isSafeInteger(usedQuota) &&
+    (mode === 'override' || usedQuota > 0) &&
+    (mode !== 'subtract' || usedQuota <= props.currentUsedQuota)
+
+  const getPreviewText = () => {
+    const current = props.currentUsedQuota
+    switch (mode) {
+      case 'add':
+        return `${formatQuota(current)}  +${formatQuota(usedQuota)} = ${formatQuota(current + usedQuota)}`
+      case 'subtract':
+        return `${formatQuota(current)}  -${formatQuota(usedQuota)} = ${formatQuota(current - usedQuota)}`
+      case 'override':
+        return `${formatQuota(current)} → ${formatQuota(usedQuota)}`
+    }
+  }
 
   const handleConfirm = async () => {
     if (!isValid) return
@@ -72,7 +96,8 @@ export function UserUsedQuotaDialog(props: UserUsedQuotaDialogProps) {
       const result = await setUserUsedQuota({
         id: props.userId,
         action: 'set_used_quota',
-        value: usedQuota,
+        mode,
+        value: mode === 'override' ? usedQuota : Math.abs(usedQuota),
       })
       if (result.success) {
         toast.success(t('User updated successfully'))
@@ -108,8 +133,33 @@ export function UserUsedQuotaDialog(props: UserUsedQuotaDialogProps) {
         </>
       }
     >
-      <div className='text-muted-foreground text-sm'>
-        {formatQuota(props.currentUsedQuota)}
+      <div className='text-muted-foreground text-sm'>{getPreviewText()}</div>
+      <div className='space-y-2'>
+        <Label>{t('Mode')}</Label>
+        <div className='flex gap-1'>
+          {(['add', 'subtract', 'override'] as const).map((value) => (
+            <Button
+              key={value}
+              type='button'
+              variant='outline'
+              size='sm'
+              className={cn(
+                mode === value &&
+                  'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
+              )}
+              onClick={() => {
+                setMode(value)
+                setAmount(
+                  value === 'override'
+                    ? String(quotaUnitsToDollars(props.currentUsedQuota))
+                    : ''
+                )
+              }}
+            >
+              {t(MODE_LABELS[value])}
+            </Button>
+          ))}
+        </div>
       </div>
       <div className='space-y-2'>
         <Label>

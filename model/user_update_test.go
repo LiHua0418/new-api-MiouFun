@@ -115,6 +115,45 @@ func TestSetUserUsedQuotaOnlyUpdatesHistoricalUsage(t *testing.T) {
 	assert.Error(t, SetUserUsedQuota(user.Id, -1))
 }
 
+func TestAdjustUserUsedQuotaModes(t *testing.T) {
+	setupUserUpdateTestState(t)
+
+	user := User{
+		Id:        4,
+		Username:  "adjust-used-quota-user",
+		Password:  "password",
+		Status:    common.UserStatusEnabled,
+		UsedQuota: 100,
+	}
+	require.NoError(t, DB.Create(&user).Error)
+
+	before, after, err := AdjustUserUsedQuota(user.Id, "add", 50)
+	require.NoError(t, err)
+	assert.Equal(t, 100, before)
+	assert.Equal(t, 150, after)
+
+	before, after, err = AdjustUserUsedQuota(user.Id, "subtract", 30)
+	require.NoError(t, err)
+	assert.Equal(t, 150, before)
+	assert.Equal(t, 120, after)
+
+	before, after, err = AdjustUserUsedQuota(user.Id, "override", 25)
+	require.NoError(t, err)
+	assert.Equal(t, 120, before)
+	assert.Equal(t, 25, after)
+
+	_, _, err = AdjustUserUsedQuota(user.Id, "subtract", 26)
+	assert.Error(t, err)
+	_, _, err = AdjustUserUsedQuota(user.Id, "add", 0)
+	assert.Error(t, err)
+	_, _, err = AdjustUserUsedQuota(user.Id, "invalid", 1)
+	assert.Error(t, err)
+
+	var got User
+	require.NoError(t, DB.First(&got, user.Id).Error)
+	assert.Equal(t, 25, got.UsedQuota)
+}
+
 func TestEnsureEmailAvailableRejectsExistingEmailCaseInsensitive(t *testing.T) {
 	setupUserUpdateTestState(t)
 

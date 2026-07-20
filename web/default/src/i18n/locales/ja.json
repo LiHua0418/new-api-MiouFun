@@ -3136,6 +3136,8 @@
     "Override Rules": "上書きルール",
     "Override the endpoint used for testing. Leave empty to auto detect.": "テストに使用されるエンドポイントを上書きします。自動検出するには空のままにします。",
     "overrides for matching model prefix.": "は一致するモデル接頭辞に上書きします。",
+    "Decreased user historical usage by {{quota}} ({{from}} to {{to}})": "ユーザーの履歴使用量を {{quota}} 減らしました（{{from}} から {{to}}）",
+    "Increased user historical usage by {{quota}} ({{from}} to {{to}})": "ユーザーの履歴使用量を {{quota}} 増やしました（{{from}} から {{to}}）",
     "Overrode user historical usage from {{from}} to {{to}}": "ユーザーの履歴使用量を {{from}} から {{to}} に上書きしました",
     "Overrode user quota from {{from}} to {{to}}": "ユーザーのクォータを {{from}} から {{to}} に上書きしました",
     "Overview": "概要",

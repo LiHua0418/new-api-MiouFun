@@ -134,6 +134,7 @@ export interface ManageUserQuotaPayload {
 export interface SetUserUsedQuotaPayload {
   id: number
   action: 'set_used_quota'
+  mode: QuotaAdjustMode
   value: number
 }
 

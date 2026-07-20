@@ -14,6 +14,7 @@ import (
 
 	"github.com/bytedance/gopkg/util/gopool"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const UserNameMaxLength = 20
@@ -982,13 +983,48 @@ func GetUserUsedQuota(id int) (quota int, err error) {
 }
 
 func SetUserUsedQuota(id int, quota int) error {
+	_, _, err := AdjustUserUsedQuota(id, "override", quota)
+	return err
+}
+
+func AdjustUserUsedQuota(id int, mode string, value int) (before int, after int, err error) {
 	if id <= 0 {
-		return errors.New("user id must be positive")
+		return 0, 0, errors.New("user id must be positive")
 	}
-	if quota < 0 {
-		return errors.New("used quota cannot be negative")
+	if mode == "" {
+		mode = "override"
 	}
-	return DB.Model(&User{}).Where("id = ?", id).Update("used_quota", quota).Error
+	if value < 0 || (mode != "override" && value == 0) {
+		return 0, 0, errors.New("used quota adjustment must be positive")
+	}
+
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		var user User
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Select("id", "used_quota").First(&user, id).Error; err != nil {
+			return err
+		}
+
+		before = user.UsedQuota
+		switch mode {
+		case "add":
+			after = before + value
+			if after < before {
+				return errors.New("used quota adjustment is too large")
+			}
+		case "subtract":
+			if value > before {
+				return errors.New("used quota cannot be negative")
+			}
+			after = before - value
+		case "override":
+			after = value
+		default:
+			return errors.New("invalid used quota adjustment mode")
+		}
+
+		return tx.Model(&User{}).Where("id = ?", id).Update("used_quota", after).Error
+	})
+	return before, after, err
 }
 
 func GetUserEmail(id int) (email string, err error) {

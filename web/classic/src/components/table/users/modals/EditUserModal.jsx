@@ -72,6 +72,7 @@ const EditUserModal = (props) => {
   const [usedQuotaModalOpen, setUsedQuotaModalOpen] = useState(false);
   const [usedQuotaLocal, setUsedQuotaLocal] = useState('');
   const [usedAmountLocal, setUsedAmountLocal] = useState('');
+  const [usedQuotaMode, setUsedQuotaMode] = useState('add');
   const [usedQuotaLoading, setUsedQuotaLoading] = useState(false);
   const isMobile = useIsMobile();
   const [groupOptions, setGroupOptions] = useState([]);
@@ -241,14 +242,22 @@ const EditUserModal = (props) => {
   const updateUsedQuota = async () => {
     if (usedQuotaLocal === '' || usedQuotaLocal == null) return;
     const value = Number(usedQuotaLocal);
-    if (!Number.isSafeInteger(value) || value < 0) return;
+    const currentUsedQuota = formApiRef.current?.getValue('used_quota') || 0;
+    if (
+      !Number.isSafeInteger(value) ||
+      value < 0 ||
+      (usedQuotaMode !== 'override' && value === 0) ||
+      (usedQuotaMode === 'subtract' && value > currentUsedQuota)
+    )
+      return;
 
     setUsedQuotaLoading(true);
     try {
       const res = await API.post('/api/user/manage', {
         id: parseInt(userId),
         action: 'set_used_quota',
-        value,
+        mode: usedQuotaMode,
+        value: usedQuotaMode === 'override' ? value : Math.abs(value),
       });
       const { success, message } = res.data;
       if (success) {
@@ -279,12 +288,25 @@ const EditUserModal = (props) => {
   };
 
   const openUsedQuotaModal = () => {
-    const currentUsedQuota = formApiRef.current?.getValue('used_quota') || 0;
-    setUsedQuotaLocal(currentUsedQuota);
-    setUsedAmountLocal(
-      Number(quotaToDisplayAmount(currentUsedQuota).toFixed(6)),
-    );
+    setUsedQuotaMode('add');
+    setUsedQuotaLocal('');
+    setUsedAmountLocal('');
     setUsedQuotaModalOpen(true);
+  };
+
+  const getUsedQuotaPreviewText = () => {
+    const current = formApiRef.current?.getValue('used_quota') || 0;
+    const value = Number(usedQuotaLocal) || 0;
+    switch (usedQuotaMode) {
+      case 'add':
+        return `${t('历史消耗')}：${renderQuota(current)}，+${renderQuota(value)} = ${renderQuota(current + value)}`;
+      case 'subtract':
+        return `${t('历史消耗')}：${renderQuota(current)}，-${renderQuota(value)} = ${renderQuota(current - value)}`;
+      case 'override':
+        return `${t('历史消耗')}：${renderQuota(current)} → ${renderQuota(value)}`;
+      default:
+        return '';
+    }
   };
 
   /* --------------------------- UI --------------------------- */
@@ -667,6 +689,7 @@ const EditUserModal = (props) => {
           setUsedQuotaModalOpen(false);
           setUsedQuotaLocal('');
           setUsedAmountLocal('');
+          setUsedQuotaMode('add');
         }}
         confirmLoading={usedQuotaLoading}
         closable={null}
@@ -677,6 +700,36 @@ const EditUserModal = (props) => {
           </div>
         }
       >
+        <div className='mb-4'>
+          <Text type='secondary' className='block mb-2'>
+            {getUsedQuotaPreviewText()}
+          </Text>
+        </div>
+        <div className='mb-3'>
+          <div className='mb-1'>
+            <Text size='small'>{t('操作')}</Text>
+          </div>
+          <RadioGroup
+            type='button'
+            value={usedQuotaMode}
+            onChange={(event) => {
+              const mode = event.target.value;
+              const current = formApiRef.current?.getValue('used_quota') || 0;
+              setUsedQuotaMode(mode);
+              setUsedQuotaLocal(mode === 'override' ? current : '');
+              setUsedAmountLocal(
+                mode === 'override'
+                  ? Number(quotaToDisplayAmount(current).toFixed(6))
+                  : '',
+              );
+            }}
+            style={{ width: '100%' }}
+          >
+            <Radio value='add'>{t('添加')}</Radio>
+            <Radio value='subtract'>{t('减少')}</Radio>
+            <Radio value='override'>{t('覆盖')}</Radio>
+          </RadioGroup>
+        </div>
         <div className='mb-3'>
           <div className='mb-1'>
             <Text size='small'>{t('金额')}</Text>
@@ -692,7 +745,11 @@ const EditUserModal = (props) => {
               const amount = val === '' || val == null ? '' : val;
               setUsedAmountLocal(amount);
               setUsedQuotaLocal(
-                amount === '' ? '' : displayAmountToQuota(amount),
+                amount === ''
+                  ? ''
+                  : usedQuotaMode === 'override'
+                    ? displayAmountToQuota(amount)
+                    : displayAmountToQuota(Math.abs(amount)),
               );
             }}
             style={{ width: '100%' }}
@@ -725,7 +782,9 @@ const EditUserModal = (props) => {
               setUsedAmountLocal(
                 quota === ''
                   ? ''
-                  : Number(quotaToDisplayAmount(quota).toFixed(6)),
+                  : usedQuotaMode === 'override'
+                    ? Number(quotaToDisplayAmount(quota).toFixed(6))
+                    : Number(quotaToDisplayAmount(Math.abs(quota)).toFixed(6)),
               );
             }}
             style={{ width: '100%' }}

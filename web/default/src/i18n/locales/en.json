@@ -3136,6 +3136,8 @@
     "Override Rules": "Override Rules",
     "Override the endpoint used for testing. Leave empty to auto detect.": "Override the endpoint used for testing. Leave empty to auto detect.",
     "overrides for matching model prefix.": "overrides for matching model prefix.",
+    "Decreased user historical usage by {{quota}} ({{from}} to {{to}})": "Decreased user historical usage by {{quota}} ({{from}} to {{to}})",
+    "Increased user historical usage by {{quota}} ({{from}} to {{to}})": "Increased user historical usage by {{quota}} ({{from}} to {{to}})",
     "Overrode user historical usage from {{from}} to {{to}}": "Overrode user historical usage from {{from}} to {{to}}",
     "Overrode user quota from {{from}} to {{to}}": "Overrode user quota from {{from}} to {{to}}",
     "Overview": "Overview",

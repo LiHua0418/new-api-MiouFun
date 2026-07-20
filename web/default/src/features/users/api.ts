@@ -129,7 +129,7 @@ export async function adjustUserQuota(
 }
 
 /**
- * Override the historical usage shown in account statistics.
+ * Adjust the historical usage shown in account statistics.
  */
 export async function setUserUsedQuota(
   payload: SetUserUsedQuotaPayload

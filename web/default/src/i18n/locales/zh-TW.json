@@ -3136,6 +3136,8 @@
     "Override Rules": "覆蓋規則",
     "Override the endpoint used for testing. Leave empty to auto detect.": "覆蓋用於測試的端點。留空以自動偵測。",
     "overrides for matching model prefix.": "為匹配模型前綴的覆蓋價。",
+    "Decreased user historical usage by {{quota}} ({{from}} to {{to}})": "減少用戶歷史消耗 {{quota}}（從 {{from}} 改為 {{to}}）",
+    "Increased user historical usage by {{quota}} ({{from}} to {{to}})": "增加用戶歷史消耗 {{quota}}（從 {{from}} 改為 {{to}}）",
     "Overrode user historical usage from {{from}} to {{to}}": "覆蓋用戶歷史消耗，從 {{from}} 改為 {{to}}",
     "Overrode user quota from {{from}} to {{to}}": "覆蓋用戶額度，從 {{from}} 改為 {{to}}",
     "Overview": "概覽",
