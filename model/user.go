@@ -981,6 +981,16 @@ func GetUserUsedQuota(id int) (quota int, err error) {
 	return quota, err
 }
 
+func SetUserUsedQuota(id int, quota int) error {
+	if id <= 0 {
+		return errors.New("user id must be positive")
+	}
+	if quota < 0 {
+		return errors.New("used quota cannot be negative")
+	}
+	return DB.Model(&User{}).Where("id = ?", id).Update("used_quota", quota).Error
+}
+
 func GetUserEmail(id int) (email string, err error) {
 	err = DB.Model(&User{}).Where("id = ?", id).Select("email").Find(&email).Error
 	return email, err

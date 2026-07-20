@@ -70,7 +70,11 @@ import {
   normalizeAdminPermissions,
 } from '@/lib/admin-permissions'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
-import { formatQuota, parseQuotaFromDollars } from '@/lib/format'
+import {
+  formatQuota,
+  parseQuotaFromDollars,
+  quotaUnitsToDollars,
+} from '@/lib/format'
 import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -91,6 +95,7 @@ import {
 } from '../lib'
 import { type User } from '../types'
 import { UserQuotaDialog } from './user-quota-dialog'
+import { UserUsedQuotaDialog } from './user-used-quota-dialog'
 import { useUsers } from './users-provider'
 
 type UsersMutateDrawerProps = {
@@ -110,6 +115,8 @@ export function UsersMutateDrawer({
   const currentUser = useAuthStore((s) => s.auth.user)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false)
+  const [usedQuotaDialogOpen, setUsedQuotaDialogOpen] = useState(false)
+  const [usedQuota, setUsedQuota] = useState(currentRow?.used_quota ?? 0)
 
   // Fetch groups
   const { data: groupsData } = useQuery({
@@ -135,10 +142,12 @@ export function UsersMutateDrawer({
   // Load existing data when updating
   useEffect(() => {
     if (open && isUpdate && currentRow) {
+      setUsedQuota(currentRow.used_quota)
       // For update, fetch fresh data
       getUser(currentRow.id).then((result) => {
         if (result.success && result.data) {
           form.reset(transformUserToFormDefaults(result.data))
+          setUsedQuota(result.data.used_quota)
         }
       })
     } else if (open && !isUpdate) {
@@ -207,6 +216,7 @@ export function UsersMutateDrawer({
     const result = await getUser(currentRow.id)
     if (result.success && result.data) {
       form.reset(transformUserToFormDefaults(result.data))
+      setUsedQuota(result.data.used_quota)
     }
     triggerRefresh()
   }
@@ -388,6 +398,32 @@ export function UsersMutateDrawer({
                       </FormItem>
                     )}
                   />
+
+                  <FormItem>
+                    <FormLabel>
+                      {t('Historical Usage')} ({currencyLabel})
+                    </FormLabel>
+                    <div className='flex gap-2'>
+                      <Input
+                        value={
+                          tokensOnly
+                            ? String(usedQuota)
+                            : quotaUnitsToDollars(usedQuota).toFixed(6)
+                        }
+                        readOnly
+                        className='flex-1'
+                      />
+                      <Button
+                        type='button'
+                        variant='outline'
+                        onClick={() => setUsedQuotaDialogOpen(true)}
+                      >
+                        <Pencil className='mr-1 h-4 w-4' />
+                        {t('Edit')}
+                      </Button>
+                    </div>
+                    <FormDescription>{formatQuota(usedQuota)}</FormDescription>
+                  </FormItem>
 
                   <FormField
                     control={form.control}
@@ -591,6 +627,16 @@ export function UsersMutateDrawer({
           onOpenChange={setQuotaDialogOpen}
           userId={currentRow.id}
           currentQuota={parseQuotaFromDollars(currentQuotaRaw || 0)}
+          onSuccess={refreshUserData}
+        />
+      )}
+
+      {currentRow && (
+        <UserUsedQuotaDialog
+          open={usedQuotaDialogOpen}
+          onOpenChange={setUsedQuotaDialogOpen}
+          userId={currentRow.id}
+          currentUsedQuota={usedQuota}
           onSuccess={refreshUserData}
         />
       )}

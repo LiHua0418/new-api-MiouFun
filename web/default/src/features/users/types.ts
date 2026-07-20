@@ -131,6 +131,12 @@ export interface ManageUserQuotaPayload {
   value: number
 }
 
+export interface SetUserUsedQuotaPayload {
+  id: number
+  action: 'set_used_quota'
+  value: number
+}
+
 // ============================================================================
 // Dialog Types
 // ============================================================================

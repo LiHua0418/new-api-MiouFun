@@ -27,6 +27,7 @@ import type {
   UserFormData,
   ManageUserAction,
   ManageUserQuotaPayload,
+  SetUserUsedQuotaPayload,
   ApiResponse,
 } from './types'
 
@@ -122,6 +123,16 @@ export async function manageUser(
  */
 export async function adjustUserQuota(
   payload: ManageUserQuotaPayload
+): Promise<ApiResponse<Partial<User>>> {
+  const res = await api.post('/api/user/manage', payload)
+  return res.data
+}
+
+/**
+ * Override the historical usage shown in account statistics.
+ */
+export async function setUserUsedQuota(
+  payload: SetUserUsedQuotaPayload
 ): Promise<ApiResponse<Partial<User>>> {
   const res = await api.post('/api/user/manage', payload)
   return res.data

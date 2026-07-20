@@ -3136,6 +3136,7 @@
     "Override Rules": "Правила переопределения",
     "Override the endpoint used for testing. Leave empty to auto detect.": "Переопределить конечную точку, используемую для тестирования. Оставьте пустым для автоматического определения.",
     "overrides for matching model prefix.": "переопределяет цену по совпавшему префиксу модели.",
+    "Overrode user historical usage from {{from}} to {{to}}": "Историческое потребление пользователя изменено с {{from}} на {{to}}",
     "Overrode user quota from {{from}} to {{to}}": "Квота пользователя изменена с {{from}} на {{to}}",
     "Overview": "Обзор",
     "Overwritten": "Перезаписано",

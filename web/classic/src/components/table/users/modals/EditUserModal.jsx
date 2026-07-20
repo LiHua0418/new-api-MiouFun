@@ -69,12 +69,17 @@ const EditUserModal = (props) => {
   const [adjustAmountLocal, setAdjustAmountLocal] = useState('');
   const [adjustMode, setAdjustMode] = useState('add');
   const [adjustLoading, setAdjustLoading] = useState(false);
+  const [usedQuotaModalOpen, setUsedQuotaModalOpen] = useState(false);
+  const [usedQuotaLocal, setUsedQuotaLocal] = useState('');
+  const [usedAmountLocal, setUsedAmountLocal] = useState('');
+  const [usedQuotaLoading, setUsedQuotaLoading] = useState(false);
   const isMobile = useIsMobile();
   const [groupOptions, setGroupOptions] = useState([]);
   const [bindingModalVisible, setBindingModalVisible] = useState(false);
   const formApiRef = useRef(null);
   const [showAdjustQuotaRaw, setShowAdjustQuotaRaw] = useState(false);
   const [showQuotaInput, setShowQuotaInput] = useState(false);
+  const [showUsedQuotaRaw, setShowUsedQuotaRaw] = useState(false);
   const [inputs, setInputs] = useState(null);
 
   const isEdit = Boolean(userId);
@@ -92,6 +97,8 @@ const EditUserModal = (props) => {
     email: '',
     quota: 0,
     quota_amount: 0,
+    used_quota: 0,
+    used_quota_amount: 0,
     group: 'default',
     remark: '',
   });
@@ -116,6 +123,9 @@ const EditUserModal = (props) => {
       data.password = '';
       data.quota_amount = Number(
         quotaToDisplayAmount(data.quota || 0).toFixed(6),
+      );
+      data.used_quota_amount = Number(
+        quotaToDisplayAmount(data.used_quota || 0).toFixed(6),
       );
       setInputs({ ...getInitValues(), ...data });
     } else {
@@ -150,6 +160,8 @@ const EditUserModal = (props) => {
     let payload = { ...values };
     delete payload.quota;
     delete payload.quota_amount;
+    delete payload.used_quota;
+    delete payload.used_quota_amount;
     if (userId) {
       payload.id = parseInt(userId);
     }
@@ -170,7 +182,11 @@ const EditUserModal = (props) => {
   const adjustQuota = async () => {
     const quotaVal = parseInt(adjustQuotaLocal) || 0;
     if (quotaVal <= 0 && adjustMode !== 'override') return;
-    if (adjustMode === 'override' && (adjustQuotaLocal === '' || adjustQuotaLocal == null)) return;
+    if (
+      adjustMode === 'override' &&
+      (adjustQuotaLocal === '' || adjustQuotaLocal == null)
+    )
+      return;
     setAdjustLoading(true);
     try {
       const res = await API.post('/api/user/manage', {
@@ -220,6 +236,55 @@ const EditUserModal = (props) => {
       default:
         return '';
     }
+  };
+
+  const updateUsedQuota = async () => {
+    if (usedQuotaLocal === '' || usedQuotaLocal == null) return;
+    const value = Number(usedQuotaLocal);
+    if (!Number.isSafeInteger(value) || value < 0) return;
+
+    setUsedQuotaLoading(true);
+    try {
+      const res = await API.post('/api/user/manage', {
+        id: parseInt(userId),
+        action: 'set_used_quota',
+        value,
+      });
+      const { success, message } = res.data;
+      if (success) {
+        showSuccess(t('用户信息更新成功！'));
+        setUsedQuotaModalOpen(false);
+        setUsedQuotaLocal('');
+        setUsedAmountLocal('');
+        const userRes = await API.get(`/api/user/${userId}`);
+        if (userRes.data.success) {
+          const data = userRes.data.data;
+          data.password = '';
+          data.quota_amount = Number(
+            quotaToDisplayAmount(data.quota || 0).toFixed(6),
+          );
+          data.used_quota_amount = Number(
+            quotaToDisplayAmount(data.used_quota || 0).toFixed(6),
+          );
+          setInputs({ ...getInitValues(), ...data });
+        }
+        props.refresh();
+      } else {
+        showError(message);
+      }
+    } catch (e) {
+      showError(e.message);
+    }
+    setUsedQuotaLoading(false);
+  };
+
+  const openUsedQuotaModal = () => {
+    const currentUsedQuota = formApiRef.current?.getValue('used_quota') || 0;
+    setUsedQuotaLocal(currentUsedQuota);
+    setUsedAmountLocal(
+      Number(quotaToDisplayAmount(currentUsedQuota).toFixed(6)),
+    );
+    setUsedQuotaModalOpen(true);
   };
 
   /* --------------------------- UI --------------------------- */
@@ -370,6 +435,29 @@ const EditUserModal = (props) => {
 
                       <Col span={10}>
                         <Form.InputNumber
+                          field='used_quota_amount'
+                          label={t('历史消耗')}
+                          prefix={getCurrencyConfig().symbol}
+                          precision={6}
+                          step={0.000001}
+                          style={{ width: '100%' }}
+                          readonly
+                        />
+                      </Col>
+
+                      <Col span={14}>
+                        <Form.Slot label={t('修改历史消耗')}>
+                          <Button
+                            icon={<IconEdit />}
+                            onClick={openUsedQuotaModal}
+                          >
+                            {t('修改')}
+                          </Button>
+                        </Form.Slot>
+                      </Col>
+
+                      <Col span={10}>
+                        <Form.InputNumber
                           field='quota_amount'
                           label={t('金额')}
                           prefix={getCurrencyConfig().symbol}
@@ -401,7 +489,10 @@ const EditUserModal = (props) => {
                             ? `▾ ${t('收起原生额度输入')}`
                             : `▸ ${t('使用原生额度输入')}`}
                         </div>
-                        <div style={{ display: showQuotaInput ? 'block' : 'none' }} className='mt-2'>
+                        <div
+                          style={{ display: showQuotaInput ? 'block' : 'none' }}
+                          className='mt-2'
+                        >
                           <Form.InputNumber
                             field='quota'
                             label={t('额度')}
@@ -539,7 +630,10 @@ const EditUserModal = (props) => {
             ? `▾ ${t('收起原生额度输入')}`
             : `▸ ${t('使用原生额度输入')}`}
         </div>
-        <div style={{ display: showAdjustQuotaRaw ? 'block' : 'none' }} className='mt-2'>
+        <div
+          style={{ display: showAdjustQuotaRaw ? 'block' : 'none' }}
+          className='mt-2'
+        >
           <div className='mb-1'>
             <Text size='small'>{t('额度')}</Text>
           </div>
@@ -556,6 +650,82 @@ const EditUserModal = (props) => {
                   : adjustMode === 'override'
                     ? Number(quotaToDisplayAmount(quota).toFixed(6))
                     : Number(quotaToDisplayAmount(Math.abs(quota)).toFixed(6)),
+              );
+            }}
+            style={{ width: '100%' }}
+            showClear
+            step={500000}
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        centered
+        visible={usedQuotaModalOpen}
+        onOk={updateUsedQuota}
+        onCancel={() => {
+          setUsedQuotaModalOpen(false);
+          setUsedQuotaLocal('');
+          setUsedAmountLocal('');
+        }}
+        confirmLoading={usedQuotaLoading}
+        closable={null}
+        title={
+          <div className='flex items-center'>
+            <IconEdit className='mr-2' />
+            {t('修改历史消耗')}
+          </div>
+        }
+      >
+        <div className='mb-3'>
+          <div className='mb-1'>
+            <Text size='small'>{t('金额')}</Text>
+          </div>
+          <InputNumber
+            prefix={getCurrencyConfig().symbol}
+            placeholder={t('输入金额')}
+            value={usedAmountLocal}
+            precision={6}
+            min={0}
+            step={0.000001}
+            onChange={(val) => {
+              const amount = val === '' || val == null ? '' : val;
+              setUsedAmountLocal(amount);
+              setUsedQuotaLocal(
+                amount === '' ? '' : displayAmountToQuota(amount),
+              );
+            }}
+            style={{ width: '100%' }}
+            showClear
+          />
+        </div>
+        <div
+          className='text-xs cursor-pointer mt-2'
+          style={{ color: 'var(--semi-color-text-2)' }}
+          onClick={() => setShowUsedQuotaRaw((value) => !value)}
+        >
+          {showUsedQuotaRaw
+            ? `▾ ${t('收起原生额度输入')}`
+            : `▸ ${t('使用原生额度输入')}`}
+        </div>
+        <div
+          style={{ display: showUsedQuotaRaw ? 'block' : 'none' }}
+          className='mt-2'
+        >
+          <div className='mb-1'>
+            <Text size='small'>{t('额度')}</Text>
+          </div>
+          <InputNumber
+            placeholder={t('输入额度')}
+            value={usedQuotaLocal}
+            min={0}
+            onChange={(val) => {
+              const quota = val === '' || val == null ? '' : val;
+              setUsedQuotaLocal(quota);
+              setUsedAmountLocal(
+                quota === ''
+                  ? ''
+                  : Number(quotaToDisplayAmount(quota).toFixed(6)),
               );
             }}
             style={{ width: '100%' }}

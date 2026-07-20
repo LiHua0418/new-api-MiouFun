@@ -92,6 +92,29 @@ func TestUpdateUserSettingOnlyUpdatesSetting(t *testing.T) {
 	assert.Equal(t, "zh", got.GetSetting().Language)
 }
 
+func TestSetUserUsedQuotaOnlyUpdatesHistoricalUsage(t *testing.T) {
+	setupUserUpdateTestState(t)
+
+	user := User{
+		Id:           3,
+		Username:     "used-quota-user",
+		Password:     "password",
+		Status:       common.UserStatusEnabled,
+		Quota:        1000,
+		UsedQuota:    20,
+		RequestCount: 3,
+	}
+	require.NoError(t, DB.Create(&user).Error)
+	require.NoError(t, SetUserUsedQuota(user.Id, 750))
+
+	var got User
+	require.NoError(t, DB.First(&got, user.Id).Error)
+	assert.Equal(t, 1000, got.Quota)
+	assert.Equal(t, 750, got.UsedQuota)
+	assert.Equal(t, 3, got.RequestCount)
+	assert.Error(t, SetUserUsedQuota(user.Id, -1))
+}
+
 func TestEnsureEmailAvailableRejectsExistingEmailCaseInsensitive(t *testing.T) {
 	setupUserUpdateTestState(t)
 

@@ -1147,6 +1147,31 @@ func ManageUser(c *gin.Context) {
 			"message": "",
 		})
 		return
+	case "set_used_quota":
+		if req.Value < 0 {
+			common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+			return
+		}
+		oldUsedQuota := user.UsedQuota
+		if err := model.SetUserUsedQuota(user.Id, req.Value); err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		if err := model.InvalidateUserCache(user.Id); err != nil {
+			common.SysLog(fmt.Sprintf("failed to invalidate user cache for user %d: %s", user.Id, err.Error()))
+		}
+		recordManageAuditFor(c, user.Id, "user.used_quota_override", map[string]interface{}{
+			"from": logger.LogQuota(oldUsedQuota),
+			"to":   logger.LogQuota(req.Value),
+		})
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "",
+			"data": gin.H{
+				"used_quota": req.Value,
+			},
+		})
+		return
 	}
 
 	authzTouched := false
