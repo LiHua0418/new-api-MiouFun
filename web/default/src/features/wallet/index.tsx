@@ -23,6 +23,7 @@ import { SectionPageLayout } from '@/components/layout'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { getSelf } from '@/lib/api'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { AffiliateRewardsCard } from './components/affiliate-rewards-card'
 import { BillingHistoryDialog } from './components/dialogs/billing-history-dialog'
@@ -63,6 +64,7 @@ const DEFAULT_REDEMPTION_SHOP_URL = 'https://pay.ldxp.cn/shop/P7QYCHZP'
 
 export function Wallet(props: WalletProps) {
   const { t } = useTranslation()
+  const setAuthUser = useAuthStore((state) => state.auth.setUser)
   const [user, setUser] = useState<UserWalletData | null>(null)
   const [userLoading, setUserLoading] = useState(true)
   const [topupAmount, setTopupAmount] = useState(0)
@@ -117,6 +119,7 @@ export function Wallet(props: WalletProps) {
       const response = await getSelf()
       if (response.success && response.data) {
         setUser(response.data as UserWalletData)
+        setAuthUser(response.data)
       }
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -124,7 +127,7 @@ export function Wallet(props: WalletProps) {
     } finally {
       setUserLoading(false)
     }
-  }, [])
+  }, [setAuthUser])
 
   useEffect(() => {
     fetchUser()

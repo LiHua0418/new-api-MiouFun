@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import { Eye, EyeOff } from 'lucide-react'
-import { useState, useCallback, useMemo, lazy, Suspense } from 'react'
+import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SectionPageLayout } from '@/components/layout'
@@ -31,6 +31,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { getSelf } from '@/lib/api'
 import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -168,6 +169,7 @@ export function Dashboard() {
   const navigate = useNavigate()
   const params = route.useParams()
   const userRole = useAuthStore((state) => state.auth.user?.role)
+  const setUser = useAuthStore((state) => state.auth.setUser)
   const activeSection = (params.section ??
     DASHBOARD_DEFAULT_SECTION) as DashboardSectionId
 
@@ -189,6 +191,24 @@ export function Dashboard() {
     }
   )
   const [flowSensitiveVisible, setFlowSensitiveVisible] = useState(true)
+
+  useEffect(() => {
+    let active = true
+
+    void getSelf()
+      .then((response) => {
+        if (active && response.success && response.data) {
+          setUser(response.data)
+        }
+      })
+      .catch(() => {
+        // Authentication and request errors are handled by the shared API layer.
+      })
+
+    return () => {
+      active = false
+    }
+  }, [setUser])
 
   const handleFilterChange = useCallback((filters: DashboardFilters) => {
     setModelFilters(filters)
