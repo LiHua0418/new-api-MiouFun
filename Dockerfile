@@ -31,6 +31,7 @@ ENV GOEXPERIMENT=greenteagc
 WORKDIR /build
 
 ADD go.mod go.sum ./
+COPY third_party/tokenizer ./third_party/tokenizer
 RUN go mod download
 
 COPY . .

@@ -3,6 +3,9 @@ module github.com/QuantumNous/new-api
 // +heroku goVersion go1.18
 go 1.25.1
 
+// Preserve v0.6.2 tokenization while avoiding quadratic merges on long pieces.
+replace github.com/tiktoken-go/tokenizer => ./third_party/tokenizer
+
 require (
 	github.com/Calcium-Ion/go-epay v0.0.4
 	github.com/abema/go-mp4 v1.4.1

@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,6 +38,17 @@ func OpenaiImageHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.
 
 	if oaiError := usageResp.GetOpenAIError(); oaiError != nil && oaiError.Type != "" {
 		return nil, types.WithOpenAIError(*oaiError, resp.StatusCode)
+	}
+
+	responseBody, err = inlineGPTImage2URLResponses(c.Request.Context(), info, responseBody)
+	if err != nil {
+		logger.LogError(c, fmt.Sprintf("failed to inline gpt-image-2 response: %s", common.MaskSensitiveInfo(err.Error())))
+		return nil, types.NewOpenAIError(
+			fmt.Errorf("upstream returned an unusable gpt-image-2 image response"),
+			types.ErrorCodeBadResponseBody,
+			http.StatusBadGateway,
+			types.ErrOptionWithSkipRetry(),
+		)
 	}
 
 	// 写入新的 response body
@@ -200,15 +212,26 @@ func OpenaiImageJSONAsStreamHandler(c *gin.Context, info *relaycommon.RelayInfo,
 		return nil, types.NewOpenAIError(err, types.ErrorCodeReadResponseBodyFailed, http.StatusInternalServerError)
 	}
 
+	var usageResp dto.SimpleResponse
+	if err := common.Unmarshal(responseBody, &usageResp); err != nil {
+		return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponseBody, http.StatusInternalServerError)
+	}
+	if oaiError := usageResp.GetOpenAIError(); oaiError != nil && oaiError.Type != "" {
+		return nil, types.WithOpenAIError(*oaiError, resp.StatusCode)
+	}
+	responseBody, err = inlineGPTImage2URLResponses(c.Request.Context(), info, responseBody)
+	if err != nil {
+		logger.LogError(c, fmt.Sprintf("failed to inline gpt-image-2 stream fallback response: %s", common.MaskSensitiveInfo(err.Error())))
+		return nil, types.NewOpenAIError(
+			fmt.Errorf("upstream returned an unusable gpt-image-2 image response"),
+			types.ErrorCodeBadResponseBody,
+			http.StatusBadGateway,
+			types.ErrOptionWithSkipRetry(),
+		)
+	}
 	var imageResp dto.ImageResponse
 	if err := common.Unmarshal(responseBody, &imageResp); err != nil {
 		return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponseBody, http.StatusInternalServerError)
-	}
-
-	var usageResp dto.SimpleResponse
-	_ = common.Unmarshal(responseBody, &usageResp)
-	if oaiError := usageResp.GetOpenAIError(); oaiError != nil && oaiError.Type != "" {
-		return nil, types.WithOpenAIError(*oaiError, resp.StatusCode)
 	}
 	normalizeOpenAIUsage(&usageResp.Usage)
 	applyUsagePostProcessing(info, &usageResp.Usage, responseBody)
@@ -276,4 +299,88 @@ func writeOpenaiImageStreamPayload(c *gin.Context, eventName string, payload any
 
 func writeOpenaiImageStreamDone(c *gin.Context) error {
 	return helper.StringData(c, "[DONE]")
+}
+
+func inlineGPTImage2URLResponses(ctx context.Context, info *relaycommon.RelayInfo, responseBody []byte) ([]byte, error) {
+	if info == nil || !isGPTImage2Model(info.OriginModelName, info.UpstreamModelName) {
+		return responseBody, nil
+	}
+
+	var payload map[string]json.RawMessage
+	if err := common.Unmarshal(responseBody, &payload); err != nil {
+		return nil, fmt.Errorf("failed to parse image response: %w", err)
+	}
+	rawData, ok := payload["data"]
+	if !ok {
+		return nil, fmt.Errorf("image response is missing data")
+	}
+
+	var images []map[string]json.RawMessage
+	if err := common.Unmarshal(rawData, &images); err != nil {
+		return nil, fmt.Errorf("failed to parse image response data: %w", err)
+	}
+	if len(images) == 0 {
+		return nil, fmt.Errorf("image response contains no images")
+	}
+
+	downloadCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+
+	converted := false
+	for index, imageData := range images {
+		if imageData == nil {
+			return nil, fmt.Errorf("image response item %d is empty", index)
+		}
+
+		var imageBase64 string
+		if rawBase64, exists := imageData["b64_json"]; exists {
+			if err := common.Unmarshal(rawBase64, &imageBase64); err != nil {
+				return nil, fmt.Errorf("image response item %d has invalid b64_json: %w", index, err)
+			}
+		}
+		if strings.TrimSpace(imageBase64) != "" {
+			continue
+		}
+
+		var imageURL string
+		rawURL, exists := imageData["url"]
+		if !exists || common.Unmarshal(rawURL, &imageURL) != nil || strings.TrimSpace(imageURL) == "" {
+			return nil, fmt.Errorf("image response item %d has neither b64_json nor url", index)
+		}
+
+		_, imageBase64, err := service.GetImageFromUrlWithContext(downloadCtx, imageURL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to download image response item %d: %w", index, err)
+		}
+		if _, _, _, err := service.DecodeBase64ImageData(imageBase64); err != nil {
+			return nil, fmt.Errorf("image response item %d did not contain a valid image: %w", index, err)
+		}
+		encodedBase64, err := common.Marshal(imageBase64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode image response item %d: %w", index, err)
+		}
+		imageData["b64_json"] = encodedBase64
+		delete(imageData, "url")
+		converted = true
+	}
+
+	if !converted {
+		return responseBody, nil
+	}
+	rawData, err := common.Marshal(images)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode image response data: %w", err)
+	}
+	payload["data"] = rawData
+	return common.Marshal(payload)
+}
+
+func isGPTImage2Model(modelNames ...string) bool {
+	for _, modelName := range modelNames {
+		modelName = strings.TrimSpace(modelName)
+		if modelName == "gpt-image-2" || strings.HasPrefix(modelName, "gpt-image-2-") {
+			return true
+		}
+	}
+	return false
 }
